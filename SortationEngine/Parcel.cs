@@ -14,7 +14,7 @@ namespace SortationEngine
         private int destinationId = -1;
 
         // Gets and Sets
-        public Guid Id { get; private set; }    // Uses Guid (Globally Unique Identifier) instead of numerical type e.g. int
+        public Guid Id { get; private set; }    // Uses Guid (Globally Unique Identifier) instead of numerical type like int
 
         public int ArrivalTick { get; private set; }    // Represents the time a parcel enters the system
         public int DestinationId { get; private set; }  // The Destination of a parcel

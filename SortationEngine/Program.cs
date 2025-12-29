@@ -6,6 +6,7 @@ using System.Threading;
 using Spectre.Console;
 using SortationEngine;
 using System.Reflection.Emit;
+using Spectre.Console.Rendering;
 
 namespace SortationEngine
 {
@@ -13,42 +14,34 @@ namespace SortationEngine
     {
         static void Main(string[] args)
         {
-            //RunVisualMode();
-            RunStressTest();
+            RunVisualMode();
+            //RunStressTest();
         }
 
         static void RunVisualMode()
         {
             // 1. Initialize the Simulation Engine
             SortationHub hub = new SortationHub();
-            int currentTimeTick = 0;
+            int currentTick = 0;
 
-            // 2. Initialize the Visualization Dashboard
-            Table dashboard = new Table();
-            dashboard.Border(TableBorder.Rounded);
-            dashboard.AddColumn("Time (Tick)");
-            dashboard.AddColumn("Queue Depth");
-            for (int i = 1; i <= SimulationConfig.TotalStations; i++)
-            {
-                dashboard.AddColumn($"Station{i}");
-            }
-            dashboard.AddColumn("Status");
+            // 2. Initialize the Visualization Grid
+            Grid layoutGrid = new Grid();
 
             // 3. Start the Live Visualization Loop
-            AnsiConsole.Live(dashboard)
+            AnsiConsole.Live(layoutGrid)
                 .AutoClear(false)
                 .Start(ctx =>
                 {
-                    while (!hub.SystemJam && currentTimeTick < SimulationConfig.ShiftLengthSeconds)
+                    while (!hub.SystemJam && currentTick < SimulationConfig.ShiftLengthSeconds)
                     {
-                        currentTimeTick++;
-                        //Thread.Sleep(1);
+                        currentTick++;
+                        Thread.Sleep(200);
 
-                        // Input: Random Arrival Generator
+                        // Input: Generates random arrival
                         if (Random.Shared.NextDouble() < SimulationConfig.AvgTruckArrivalRate)
                         {
-                            List<Parcel> batch = BatchGenerator.GenerateBatch(currentTimeTick);
-                            hub.RecordTruckArrival(currentTimeTick);
+                            List<Parcel> batch = BatchGenerator.GenerateBatch(currentTick);
+                            hub.RecordTruckArrival(currentTick);
                             foreach (Parcel parcel in batch)
                             {
                                 hub.Ingest(parcel);
@@ -57,42 +50,66 @@ namespace SortationEngine
 
                         hub.RunTick();
 
-                        // Visualization: Update the Table
-                        dashboard.Rows.Clear();
-                        // Using ternary operators
-                        dashboard.AddRow(
-                            currentTimeTick.ToString(),
-                            hub.ConveyorBelt.Count >= 45 ? $"[bold red]{hub.ConveyorBelt.Count}[/]" : hub.ConveyorBelt.Count.ToString(), // Turn red if near full
-                            hub.Stations[0].IsBusy ? $"[red]Busy ({hub.Stations[0].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[1].IsBusy ? $"[red]Busy ({hub.Stations[1].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[2].IsBusy ? $"[red]Busy ({hub.Stations[2].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[3].IsBusy ? $"[red]Busy ({hub.Stations[3].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[4].IsBusy ? $"[red]Busy ({hub.Stations[4].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[5].IsBusy ? $"[red]Busy ({hub.Stations[5].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[6].IsBusy ? $"[red]Busy ({hub.Stations[6].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[7].IsBusy ? $"[red]Busy ({hub.Stations[7].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[8].IsBusy ? $"[red]Busy ({hub.Stations[8].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[9].IsBusy ? $"[red]Busy ({hub.Stations[9].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[10].IsBusy ? $"[red]Busy ({hub.Stations[10].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[11].IsBusy ? $"[red]Busy ({hub.Stations[11].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[12].IsBusy ? $"[red]Busy ({hub.Stations[12].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[13].IsBusy ? $"[red]Busy ({hub.Stations[13].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[14].IsBusy ? $"[red]Busy ({hub.Stations[14].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[15].IsBusy ? $"[red]Busy ({hub.Stations[15].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[16].IsBusy ? $"[red]Busy ({hub.Stations[16].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[17].IsBusy ? $"[red]Busy ({hub.Stations[17].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[18].IsBusy ? $"[red]Busy ({hub.Stations[18].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.Stations[19].IsBusy ? $"[red]Busy ({hub.Stations[19].TicksRemaining})[/]" : "[green]Idle[/]",
-                            hub.SystemJam? "[bold red]CRITICAL JAM[/]" : "[green]Running[/]"
+                        Grid hudGrid = new Grid();
+                        hudGrid.AddColumn(new GridColumn().Centered());
+                        hudGrid.AddColumn(new GridColumn().Centered());
+                        hudGrid.AddColumn(new GridColumn().Centered());
+
+                        Panel timePanel = new Panel($"{currentTick}").Header("TIME");
+                        Panel beltCountPanel = new Panel($"{hub.ConveyorBelt.Count}").Header("QUEUE DEPTH");
+                        Panel statusPanel = new Panel(hub.SystemJam ? "[red]CRITICAL JAM[/]" : "[green]RUNNING[/]").Header("STATUS");
+                        timePanel.Width = 10;
+                        beltCountPanel.Width = 17;
+                        statusPanel.Width = 20;
+                        hudGrid.AddRow(
+                            timePanel,
+                            beltCountPanel,
+                            statusPanel
                         );
 
-                        ctx.Refresh();
+                        Grid stationGrid = new Grid();
+                        for (int i=0; i<5; i++)
+                        {
+                            stationGrid.AddColumn(new GridColumn().Centered());
+                        }
+
+                        for (int i=0; i<4; i++)
+                        {
+                            var rowRenderables = new List<IRenderable>();
+                            for (int j = 0; j < 5; j++)
+                            {
+                                int stationIndex = (i * 5) + j;
+                                Station station = hub.Stations[stationIndex];
+
+                                string status = station.IsBusy ? $"[red]BUSY ({station.TicksRemaining})[/]" : "[green]IDLE[/]";
+                                string queue = (station.QueueCount >= 49 ? "[blue]" : "[white]") + $"Queue({station.QueueCount}/50)[/]";
+                                Panel stationPanel = new Panel(status + queue).Header($"Stn. {stationIndex + 1:00}");
+                                stationPanel.Width = 16;
+                                stationPanel.Height = 5;
+                                rowRenderables.Add(stationPanel);
+                            }
+                            stationGrid.AddRow(rowRenderables.ToArray());
+                        }
+
+                        layoutGrid = new Grid(); // .NET garbage collector will handle discarded objects
+                        layoutGrid.AddColumn();
+                        layoutGrid.AddEmptyRow();
+                        layoutGrid.AddRow(new Rule("[bold]SORTATION HUB[/]").LeftJustified());
+                        layoutGrid.AddEmptyRow();
+                        layoutGrid.AddRow(hudGrid);
+                        layoutGrid.AddEmptyRow();
+                        layoutGrid.AddRow(new Rule("[bold]STATIONS[/]").LeftJustified());
+                        layoutGrid.AddEmptyRow();
+                        layoutGrid.AddRow(stationGrid);
+
+                        // Update the screen
+                        ctx.UpdateTarget(layoutGrid);
                     }
                 });
 
             // 4. Results
-            AnsiConsole.MarkupLine($"[bold red]SIMULATION ENDED.[/] Survived for {currentTimeTick} ticks.\n");
-            SimulationResult result = ResultFactory.Create(0, hub, currentTimeTick >= SimulationConfig.ShiftLengthSeconds, currentTimeTick);
+            AnsiConsole.MarkupLine($"[bold red]SIMULATION ENDED.[/] Survived for {currentTick} ticks.\n");
+            SimulationResult result = ResultFactory.Create(0, hub, currentTick >= SimulationConfig.ShiftLengthSeconds, currentTick);
             AnsiConsole.MarkupLine($"--- RESULTS ---\n");
             AnsiConsole.MarkupLine($"Run Id:            {result.RunId}");
             AnsiConsole.MarkupLine($"Success:           {result.Success}");
@@ -106,7 +123,7 @@ namespace SortationEngine
             AnsiConsole.MarkupLine($"Station Load StdD: {result.StationLoadStdDev}");
 
             // 5. Log to csv
-            CSVLogger.Log("simulation_data.csv", result);
+            //CSVLogger.Log("simulation_data.csv", result);
         }
         static void RunStressTest()
         {
@@ -147,7 +164,7 @@ namespace SortationEngine
 
                 // 3. Results
                 SimulationResult result = ResultFactory.Create(i, hub, currentTick >= SimulationConfig.ShiftLengthSeconds, currentTick);
-                CSVLogger.Log("simulation_data.csv", result);
+                //CSVLogger.Log("simulation_data.csv", result);
                 
                 // If jammed before 8 hours, stores current ticks
                 // If hub survives, stores 28800

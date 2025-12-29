@@ -93,17 +93,6 @@ namespace SortationEngine
                 }
                 station.Tick();
             }
-            /*
-            foreach (Station station in this.Stations) 
-            {
-                if (!station.IsBusy && this.ConveyorBelt.Count > 0)
-                {
-                    Parcel parcelToProcess = ConveyorBelt.Dequeue();
-                    station.Assign(parcelToProcess);
-                }
-                station.Tick();
-            }
-            */
         }
         public void RecordTruckArrival(int currentTick) // Used to record the minimum interval between truck arrivals
         {
